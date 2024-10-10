@@ -49,7 +49,7 @@
                         <el-row style="margin-top: 10px;">
                             <el-col :span="10" style="text-align: center;">
                                 <div :style="{ 'font-size': this.screen_width * 0.008 + 'px' }">
-                                    Triplets
+                                    Triples
                                 </div>
                                 <el-statistic :value="triplet_cnt"
                                     :value-style="{ 'font-size': this.screen_width * 0.013 + 'px' }">
@@ -177,7 +177,7 @@ export default {
             predicate_cnt: 0,
             entity_cnt: 0,
             sparql: "",
-            query_result: ["", 0, 0],
+            query_result: [[], 0, 0],
             create: false,
             disable: false,
             db_list: []
@@ -208,7 +208,7 @@ export default {
             this.create = false;
         },
         list_db() {
-            this.$axios.get("http://" + this.ip + ":8080/peirs/list", {}).then((result) => {
+            this.$axios.get("http://" + this.ip + ":8080/epei/list", {}).then((result) => {
                 this.db_list = result.data.data
             })
         },
@@ -218,7 +218,7 @@ export default {
             FormDatas.append('rdf_file', item.file);
             this.$axios({
                 method: 'post',
-                url: 'http://' + this.ip + ':8080/peirs/upload',
+                url: 'http://' + this.ip + ':8080/epei/upload',
                 headers: { "Content-Type": "multipart/form-data" },
                 timeout: 30000,
                 data: FormDatas
@@ -231,7 +231,7 @@ export default {
         },
         create_db() {
             this.disable = true
-            this.$axios.post('http://' + this.ip + ':8080/peirs/create',
+            this.$axios.post('http://' + this.ip + ':8080/epei/create',
                 { 'db_name': this.upload_db_name, 'file_name': this.upload_file_name }
             ).then((result) => {
                 if (result.data.code == 1) {
@@ -244,7 +244,7 @@ export default {
         },
         close_db() {
             this.disable = true
-            this.$axios.get("http://" + this.ip + ":8080/peirs/close", {}).then((result) => {
+            this.$axios.get("http://" + this.ip + ":8080/epei/close", {}).then((result) => {
                 if (result.data.code == 1) {
                     this.db_name = ""
                     close_db_success()
@@ -256,7 +256,7 @@ export default {
             })
         },
         delete_db() {
-            this.$axios.post('http://' + this.ip + ':8080/peirs/delete',
+            this.$axios.post('http://' + this.ip + ':8080/epei/delete',
                 { 'db_name': this.db_name }
             ).then((result) => {
                 if (result.data.code == 1) {
@@ -271,11 +271,15 @@ export default {
         },
         execute_sparql() {
             this.disable = true
-            this.$axios.post('http://' + this.ip + ':8080/peirs/query',
-                { 'sparql': this.sparql.replace(/\n/g, ' ') }
+            this.$axios.get('http://' + this.ip + ':8080/epei/sparql',
+                 {params: {query: this.sparql.replace(/\n/g, ' ')}}
             ).then((result) => {
-                console.log(result.data);
-                this.query_result = [result.data.results, result.data.cnt, result.data.time]
+                console.log(result.data.results.bindings);
+                this.query_result = [result.data.results.bindings.map(item => 
+                    item.map(value => value.replace(/(^"|"$)/g, '')).join(', ')
+                ).join('\n'), 
+                result.data.results.binding_cnt, 
+                result.data.results.time_cost];
                 this.disable = false
             })
         }
@@ -289,9 +293,9 @@ export default {
         db_name() {
             if (this.disable == false) {
                 this.disable = true
-                this.$axios.post('http://' + this.ip + ':8080/peirs/load_db', { 'db_name': this.db_name }).then((result) => {
+                this.$axios.post('http://' + this.ip + ':8080/epei/load_db', { 'db_name': this.db_name }).then((result) => {
                     console.log(result)
-                    this.$axios.get("http://" + this.ip + ":8080/peirs/info", {}).then((result) => {
+                    this.$axios.get("http://" + this.ip + ":8080/epei/info", {}).then((result) => {
                         console.log(result.data.data)
                         this.entity_cnt = result.data.data.entities
                         this.triplet_cnt = result.data.data.triplets
